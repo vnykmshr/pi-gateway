@@ -134,7 +134,25 @@ test-unit: ## Run BATS unit tests
 		echo "$(RED)BATS-core not found. Run 'git submodule update --init' first$(RESET)"; \
 	fi
 
-test-all: test-dry-run test-unit ## Run all tests (dry-run + unit tests)
+test-integration: ## Run integration tests in QEMU Pi environment
+	@echo "$(BLUE)Running integration tests in QEMU Pi environment...$(RESET)"
+	@if [ -f "tests/qemu/pi-gateway-test/run-pi-vm.sh" ]; then \
+		./tests/bats-core/bin/bats tests/integration/*.bats; \
+	else \
+		echo "$(RED)QEMU environment not set up. Run 'make setup-qemu' first$(RESET)"; \
+	fi
+
+setup-qemu: ## Set up QEMU Pi environment for integration testing
+	@echo "$(BLUE)Setting up QEMU Pi environment...$(RESET)"
+	@./tests/qemu/setup-pi-vm.sh
+
+test-docker: ## Run integration tests in Docker ARM64 environment
+	@echo "$(BLUE)Running integration tests in Docker ARM64 environment...$(RESET)"
+	@./tests/docker/docker-test.sh run
+
+test-all: test-dry-run test-unit ## Run all tests (dry-run + unit)
+
+test-all-integration: test-dry-run test-unit test-docker ## Run all tests including Docker integration
 
 format: ## Format shell scripts and fix common issues
 	@echo "$(BLUE)Formatting shell scripts...$(RESET)"
