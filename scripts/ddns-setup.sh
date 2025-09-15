@@ -219,7 +219,7 @@ select_ddns_provider() {
     echo
 
     local choice
-    read -p "Select DDNS provider (1-5): " choice
+    read -r -p "Select DDNS provider (1-5): " choice
 
     case $choice in
         1) echo "duckdns" ;;
@@ -262,8 +262,8 @@ get_provider_credentials() {
             echo -e "  3. Copy your token"
             echo
             local hostname token
-            read -p "Enter your DuckDNS domain (e.g., myhome.duckdns.org): " hostname
-            read -p "Enter your DuckDNS token: " token
+            read -r -p "Enter your DuckDNS domain (e.g., myhome.duckdns.org): " hostname
+            read -r -p "Enter your DuckDNS token: " token
             echo "$hostname $token"
             ;;
         "noip")
@@ -273,10 +273,10 @@ get_provider_credentials() {
             echo -e "  3. Use your account credentials"
             echo
             local username password hostname
-            read -p "Enter your No-IP username: " username
-            read -s -p "Enter your No-IP password: " password
+            read -r -p "Enter your No-IP username: " username
+            read -r -s -p "Enter your No-IP password: " password
             echo
-            read -p "Enter your No-IP hostname: " hostname
+            read -r -p "Enter your No-IP hostname: " hostname
             echo "$username:$password $hostname"
             ;;
         "cloudflare")
@@ -286,17 +286,17 @@ get_provider_credentials() {
             echo -e "  3. Use your domain managed by Cloudflare"
             echo
             local email api_key domain
-            read -p "Enter your Cloudflare email: " email
-            read -p "Enter your Cloudflare API key: " api_key
-            read -p "Enter your domain: " domain
+            read -r -p "Enter your Cloudflare email: " email
+            read -r -p "Enter your Cloudflare API key: " api_key
+            read -r -p "Enter your domain: " domain
             echo "$email $api_key $domain"
             ;;
         *)
             echo -e "${BLUE}Generic Configuration:${NC}"
             local hostname username password
-            read -p "Enter hostname: " hostname
-            read -p "Enter username: " username
-            read -s -p "Enter password: " password
+            read -r -p "Enter hostname: " hostname
+            read -r -p "Enter username: " username
+            read -r -s -p "Enter password: " password
             echo
             echo "$hostname $username $password"
             ;;
