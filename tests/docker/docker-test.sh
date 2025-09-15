@@ -3,6 +3,14 @@
 # Pi Gateway - Docker-based Integration Testing
 # Alternative to QEMU for cross-platform testing
 #
+# DUAL-MODE ARCHITECTURE:
+# - Simple Mode (default): Lightweight container with mock systemctl
+# - Systemd Mode: Full systemd support for advanced service testing
+#
+# Usage:
+#   USE_SIMPLE_MODE=true  ./docker-test.sh run  (default, fast)
+#   USE_SIMPLE_MODE=false ./docker-test.sh run  (systemd mode)
+#
 
 set -euo pipefail
 
