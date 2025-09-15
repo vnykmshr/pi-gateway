@@ -1,0 +1,70 @@
+# Development-only directories
+todos/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# SSH keys (if accidentally placed in repo)
+id_rsa
+id_rsa.pub
+*.key
+*.pem
+
+# Configuration files with sensitive data
+config/secrets/
+*.secret
+*secrets*
+
+# Generated configuration files
+config/generated/
+*.generated.conf
+
+# Backup files
+*.bak
+*.backup
+config/*.bak
+scripts/*.bak
+
+# WireGuard keys and configs (will be generated)
+config/wireguard/private/
+config/wireguard/clients/
+*.conf.generated
+
+# Temporary installation files
+downloads/
+temp/
+tmp/
