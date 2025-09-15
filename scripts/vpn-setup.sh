@@ -121,9 +121,9 @@ init_dry_run_environment() {
         echo -e "${PURPLE}   → Log file: $LOG_FILE${NC}"
         echo
 
-        # Initialize mock environment if available
-        if command -v init_dry_run_environment >/dev/null 2>&1; then
-            init_dry_run_environment
+        # Initialize mock environment if available (from external mock files)
+        if declare -f mock_init_dry_run_environment >/dev/null 2>&1; then
+            mock_init_dry_run_environment
         fi
     fi
 }
