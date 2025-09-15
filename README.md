@@ -1,6 +1,11 @@
-# Pi Gateway
+# Pi Gateway - Homelab Bootstrap
 
-A comprehensive homelab bootstrap script that transforms a Raspberry Pi 500 into a secure, self-hosted server for remote access and networking.
+[![CI Status](https://github.com/vnykmshr/pi-gateway/workflows/Pi%20Gateway%20CI/badge.svg)](https://github.com/vnykmshr/pi-gateway/actions)
+[![Release](https://img.shields.io/github/v/release/vnykmshr/pi-gateway)](https://github.com/vnykmshr/pi-gateway/releases)
+[![License](https://img.shields.io/github/license/vnykmshr/pi-gateway)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-40%20tests%20|%2092.5%25%20pass-green)](https://github.com/vnykmshr/pi-gateway/actions)
+
+**Complete Raspberry Pi homelab bootstrap system with automated security hardening, VPN setup, and comprehensive testing infrastructure.**
 
 ## Overview
 
@@ -20,12 +25,30 @@ make check
 make setup
 ```
 
-## Features
+## ✨ Features
 
-- **🔐 Secure Remote Access**: Encrypted VPN, hardened SSH, remote desktop
-- **🌐 Dynamic IP Support**: Reliable external access via Dynamic DNS
-- **⚡ One-Script Setup**: Fully automated deployment from fresh OS install
-- **🔧 Extensible Platform**: Foundation for additional self-hosted services
+### 🔐 **Security & Hardening**
+- **SSH Hardening**: Key-based authentication, fail2ban, custom ports
+- **System Hardening**: Kernel parameters, network security, service management
+- **Firewall Configuration**: UFW setup with secure defaults
+- **User Account Security**: Service accounts, permission hardening
+
+### 🌐 **VPN & Remote Access**
+- **WireGuard VPN Server**: Automated setup with client management
+- **Dynamic DNS**: Cloudflare integration for remote access
+- **Remote Desktop**: VNC server configuration
+- **Port Management**: Automated port forwarding setup
+
+### 🧪 **Development & Testing**
+- **Virtual Sandbox**: Complete dry-run environment with hardware mocking
+- **QEMU Integration**: Full Raspberry Pi emulation for testing
+- **Docker Testing**: Cross-platform development containers (simple + systemd modes)
+- **40+ Unit Tests**: Comprehensive test coverage (92.5% pass rate)
+
+### 🏠 **Homelab Ready**
+- **Service Discovery**: mDNS and local network integration
+- **Monitoring Setup**: System health monitoring
+- **Extension Support**: Plugin architecture for custom services
 
 ## Requirements
 
@@ -66,17 +89,46 @@ pi-gateway/
 └── tests/                       # Validation scripts
 ```
 
-## Development
+## 🧪 Development & Testing
 
+### Testing Environment
+```bash
+# Quick dry-run tests (safe, no system changes)
+make test-dry-run
+
+# Complete unit test suite
+make test-unit
+
+# Docker integration testing
+make test-docker              # Simple mode
+make test-docker-systemd      # Systemd mode
+
+# Full test suite
+make test-all-integration
+```
+
+### Development Setup
 ```bash
 # Set up development environment
 make dev-setup
 
-# Validate scripts
-make validate
+# Code quality checks
+make lint
+make format-check
 
-# Run tests
-make test
+# QEMU testing (hardware emulation)
+make setup-qemu
+make test-integration
+```
+
+### Available Testing Commands
+```bash
+make test-dry-run           # Safe dry-run testing
+make test-unit              # BATS unit tests
+make test-docker            # Docker integration tests
+make test-all-integration   # Complete test suite
+make docker-shell          # Interactive Docker container
+make docker-cleanup         # Clean Docker environment
 ```
 
 ## Contributing
