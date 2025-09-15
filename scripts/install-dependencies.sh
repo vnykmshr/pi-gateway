@@ -232,10 +232,19 @@ install_wireguard() {
         warning "WireGuard not available in official repositories"
         info "Attempting to install from backports..."
 
-        echo "deb http://deb.debian.org/debian $(lsb_release -sc)-backports main" > /etc/apt/sources.list.d/backports.list
+        # Get distribution codename for backports
+        local distro_codename
+        if command -v mock_lsb_release >/dev/null 2>&1 && (is_dry_run || is_mocked "system"); then
+            distro_codename=$(mock_lsb_release -sc)
+        else
+            distro_codename=$(lsb_release -sc 2>/dev/null || echo "bookworm")
+        fi
+
+        # Add backports repository
+        execute_command "echo 'deb http://deb.debian.org/debian $distro_codename-backports main' > /etc/apt/sources.list.d/backports.list"
         (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt update) || apt update
 
-        if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt install -y -t "$(lsb_release -sc)"-backports wireguard) || apt install -y -t "$(lsb_release -sc)"-backports wireguard 2>&1 | tee -a "$LOG_FILE"; then
+        if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt install -y -t "$distro_codename-backports" wireguard) || apt install -y -t "$distro_codename-backports" wireguard 2>&1 | tee -a "$LOG_FILE"; then
             success "WireGuard installed from backports"
             ((PACKAGES_INSTALLED++))
         else
@@ -245,7 +254,9 @@ install_wireguard() {
     fi
 
     # Verify WireGuard installation
-    if command -v wg >/dev/null 2>&1; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "WireGuard tools verification skipped in dry-run mode"
+    elif command -v wg >/dev/null 2>&1; then
         local wg_version
         wg_version=$(wg --version 2>/dev/null | head -n1)
         success "WireGuard tools verified: $wg_version"
@@ -261,7 +272,7 @@ install_realvnc() {
     if [[ -f /etc/os-release ]] && grep -q "Raspberry Pi OS" /etc/os-release; then
         info "Raspberry Pi OS detected - RealVNC should be pre-installed"
 
-        if systemctl list-unit-files | grep -q vncserver; then
+        if (command -v mock_systemctl >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_systemctl list-unit-files | grep -q vncserver) || systemctl list-unit-files 2>/dev/null | grep -q vncserver; then
             success "RealVNC server found"
             ((PACKAGES_INSTALLED++))
         else
@@ -284,7 +295,7 @@ configure_services() {
     print_section "Service Configuration"
 
     # Enable SSH service
-    if systemctl enable ssh 2>&1 | tee -a "$LOG_FILE"; then
+    if (command -v mock_systemctl >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_systemctl enable ssh) || systemctl enable ssh 2>&1 | tee -a "$LOG_FILE"; then
         success "SSH service enabled"
         ((SERVICES_CONFIGURED++))
     else
@@ -304,7 +315,7 @@ configure_services() {
     # Configure fail2ban
     if command -v fail2ban-client >/dev/null 2>&1; then
         info "Configuring fail2ban..."
-        systemctl enable fail2ban >/dev/null 2>&1
+        (command -v mock_systemctl >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_systemctl enable fail2ban) || systemctl enable fail2ban >/dev/null 2>&1
         success "Fail2ban enabled"
         ((SERVICES_CONFIGURED++))
     fi
@@ -323,9 +334,9 @@ create_service_user() {
     local pi_gateway_user="pi-gateway"
 
     # Create dedicated user for Pi Gateway services
-    if ! id "$pi_gateway_user" >/dev/null 2>&1; then
+    if [[ "$DRY_RUN" == "true" ]] || ! id "$pi_gateway_user" >/dev/null 2>&1; then
         info "Creating Pi Gateway service user..."
-        if useradd -r -s /bin/false -d /var/lib/pi-gateway -m "$pi_gateway_user" 2>&1 | tee -a "$LOG_FILE"; then
+        if (command -v mock_useradd >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_useradd -r -s /bin/false -d /var/lib/pi-gateway -m "$pi_gateway_user") || useradd -r -s /bin/false -d /var/lib/pi-gateway -m "$pi_gateway_user" 2>&1 | tee -a "$LOG_FILE"; then
             success "Pi Gateway service user created"
         else
             warning "Failed to create Pi Gateway service user"
@@ -342,15 +353,20 @@ create_service_user() {
     )
 
     for dir in "${service_dirs[@]}"; do
-        mkdir -p "$dir"
-        chown "$pi_gateway_user:$pi_gateway_user" "$dir"
-        chmod 750 "$dir"
+        execute_command "mkdir -p '$dir'"
+        execute_command "chown '$pi_gateway_user:$pi_gateway_user' '$dir'"
+        execute_command "chmod 750 '$dir'"
     done
     success "Service directories created and secured"
 }
 
 install_python_packages() {
     print_section "Python Packages"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "Python packages installation skipped in dry-run mode"
+        return 0
+    fi
 
     if command -v pip3 >/dev/null 2>&1; then
         local python_packages=(

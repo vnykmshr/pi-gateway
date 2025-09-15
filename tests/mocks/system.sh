@@ -46,6 +46,15 @@ mock_systemctl() {
                 echo "active"
                 return 0
                 ;;
+            "list-unit-files")
+                echo "ssh.service                              enabled"
+                echo "fail2ban.service                        enabled"
+                echo "ufw.service                             enabled"
+                if [[ "$MOCK_SYSTEMD_ENABLED" == "true" ]]; then
+                    echo "vncserver-x11-serviced.service         enabled"
+                fi
+                return 0
+                ;;
             *)
                 echo "Mock: Unknown systemctl operation: $operation"
                 return 1
