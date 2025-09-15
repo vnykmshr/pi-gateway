@@ -64,7 +64,7 @@ mock_apt() {
     local packages=("$@")
 
     if is_mocked "system" || is_dry_run; then
-        echo -e "  ${MOCK_COLOR}[MOCK]${NC} apt $operation ${packages[*]}"
+        echo -e "  ${MOCK_COLOR}[MOCK]${NC} apt $operation ${packages[*]:-}"
 
         case "$operation" in
             "update")
@@ -102,6 +102,17 @@ mock_apt() {
                         echo "Removing $package (mock-version) ..."
                     fi
                 done
+                return 0
+                ;;
+            "autoremove")
+                echo "Reading package lists... Done"
+                echo "Building dependency tree... Done"
+                echo "0 to remove and 0 not upgraded."
+                return 0
+                ;;
+            "autoclean")
+                echo "Del /var/cache/apt/archives/mock-package.deb [100KB]"
+                echo "Freed 100KB of disk space"
                 return 0
                 ;;
             *)
@@ -311,6 +322,7 @@ setup_mock_system() {
         # Create command aliases for mocking
         alias systemctl='mock_systemctl'
         alias apt='mock_apt'
+        alias apt-cache='mock_apt_cache'
         alias sysctl='mock_sysctl'
         alias ufw='mock_ufw'
         alias useradd='mock_useradd'
@@ -318,6 +330,7 @@ setup_mock_system() {
         alias passwd='mock_passwd'
         alias chmod='mock_chmod'
         alias chown='mock_chown'
+        alias lsb_release='mock_lsb_release'
 
         return 0
     fi
@@ -328,6 +341,7 @@ cleanup_mock_system() {
     if is_mocked "system" || is_dry_run; then
         unalias systemctl 2>/dev/null || true
         unalias apt 2>/dev/null || true
+        unalias apt-cache 2>/dev/null || true
         unalias sysctl 2>/dev/null || true
         unalias ufw 2>/dev/null || true
         unalias useradd 2>/dev/null || true
@@ -335,6 +349,7 @@ cleanup_mock_system() {
         unalias passwd 2>/dev/null || true
         unalias chmod 2>/dev/null || true
         unalias chown 2>/dev/null || true
+        unalias lsb_release 2>/dev/null || true
     fi
 }
 
@@ -381,9 +396,75 @@ validate_mock_system() {
     fi
 }
 
+# Mock lsb_release command
+mock_lsb_release() {
+    local args=("$@")
+
+    if is_mocked "system" || is_dry_run; then
+        echo -e "  ${MOCK_COLOR}[MOCK]${NC} lsb_release ${args[*]}"
+
+        case "${args[0]}" in
+            "-sc")
+                echo "bookworm"
+                ;;
+            "-sr")
+                echo "12.0"
+                ;;
+            "-si")
+                echo "Raspbian GNU/Linux"
+                ;;
+            "-a")
+                echo "Distributor ID: Raspbian"
+                echo "Description: Raspbian GNU/Linux 12 (bookworm)"
+                echo "Release: 12.0"
+                echo "Codename: bookworm"
+                ;;
+            *)
+                echo "Mock: lsb_release with args: ${args[*]}"
+                ;;
+        esac
+        return 0
+    fi
+
+    # Fall back to real lsb_release
+    lsb_release "${args[@]}"
+}
+
+# Mock apt-cache command
+mock_apt_cache() {
+    local args=("$@")
+
+    if is_mocked "system" || is_dry_run; then
+        echo -e "  ${MOCK_COLOR}[MOCK]${NC} apt-cache ${args[*]}"
+
+        case "${args[0]}" in
+            "show")
+                # Simulate package information
+                echo "Package: ${args[1]}"
+                echo "Version: mock-version"
+                echo "Maintainer: Mock Maintainer"
+                echo "Description: Mock package description"
+                return 0
+                ;;
+            "search")
+                echo "${args[1]} - mock package description"
+                return 0
+                ;;
+            *)
+                echo "Mock: apt-cache with args: ${args[*]}"
+                return 0
+                ;;
+        esac
+    fi
+
+    # Fall back to real apt-cache
+    apt-cache "${args[@]}"
+}
+
 # Export mock functions
 export -f mock_systemctl
 export -f mock_apt
+export -f mock_apt_cache
 export -f mock_sysctl
 export -f mock_ufw
 export -f mock_useradd
@@ -392,6 +473,7 @@ export -f mock_passwd
 export -f mock_chmod
 export -f mock_chown
 export -f mock_sudo
+export -f mock_lsb_release
 export -f setup_mock_system
 export -f cleanup_mock_system
 export -f validate_mock_system

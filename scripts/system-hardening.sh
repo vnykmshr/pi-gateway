@@ -6,6 +6,15 @@
 
 set -euo pipefail
 
+# Source dry-run utilities if available
+if [[ -f "$(dirname "$0")/../tests/mocks/common.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/common.sh"
+fi
+
+if [[ -f "$(dirname "$0")/../tests/mocks/system.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/system.sh"
+fi
+
 # Colors for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
@@ -91,16 +100,21 @@ backup_file() {
 check_prerequisites() {
     print_section "Pre-hardening Checks"
 
-    # Check if running with sudo/root
-    if [[ $EUID -ne 0 ]]; then
+    # Check if running with sudo/root (skip in dry-run mode)
+    if [[ $EUID -ne 0 && "$DRY_RUN" != "true" ]]; then
         error "This script must be run with sudo privileges"
         echo "Usage: sudo $0"
         exit 1
     fi
-    success "Running with administrative privileges"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "Running in dry-run mode (sudo check skipped)"
+    else
+        success "Running with administrative privileges"
+    fi
 
     # Create necessary directories
-    mkdir -p "$BACKUP_DIR" "$CONFIG_DIR"
+    execute_command "mkdir -p '$BACKUP_DIR' '$CONFIG_DIR'"
     success "Backup and configuration directories created"
 
     # Initialize log
@@ -413,7 +427,7 @@ EOF
     fi
 
     # Ensure log directory exists
-    mkdir -p /var/log/pi-gateway
+    execute_command "mkdir -p /var/log/pi-gateway"
     chown pi-gateway:pi-gateway /var/log/pi-gateway
     chmod 750 /var/log/pi-gateway
     success "Log directory secured"
@@ -468,7 +482,7 @@ apply_filesystem_hardening() {
         local dir="${dir_perm%:*}"
         local perm="${dir_perm#*:}"
 
-        mkdir -p "$dir"
+        execute_command "mkdir -p '$dir'"
         chown pi-gateway:pi-gateway "$dir"
         chmod "$perm" "$dir"
     done
@@ -602,6 +616,12 @@ EOF
 verify_hardening() {
     print_section "Hardening Verification"
 
+    # Skip verification in dry-run mode
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "Hardening verification skipped in dry-run mode"
+        return 0
+    fi
+
     local checks_passed=0
     local checks_total=0
 
@@ -641,6 +661,11 @@ verify_hardening() {
 # Create hardening summary
 create_hardening_report() {
     local report_file="/var/log/pi-gateway/hardening-report.txt"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "Hardening report creation skipped in dry-run mode"
+        return 0
+    fi
 
     cat > "$report_file" << EOF
 Pi Gateway System Hardening Report
@@ -707,6 +732,15 @@ print_summary() {
 
 # Main execution
 main() {
+    # Initialize dry-run environment if available
+    if command -v init_dry_run_environment >/dev/null 2>&1; then
+        init_dry_run_environment
+    fi
+
+    # Setup mock system environment for dry-run mode
+    if command -v setup_mock_system >/dev/null 2>&1; then
+        setup_mock_system
+    fi
     # Initialize logging
     true > "$LOG_FILE"
 

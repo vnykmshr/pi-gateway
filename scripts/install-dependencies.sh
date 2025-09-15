@@ -6,6 +6,15 @@
 
 set -euo pipefail
 
+# Source dry-run utilities if available
+if [[ -f "$(dirname "$0")/../tests/mocks/common.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/common.sh"
+fi
+
+if [[ -f "$(dirname "$0")/../tests/mocks/system.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/system.sh"
+fi
+
 # Colors for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
@@ -121,30 +130,40 @@ info() {
 check_prerequisites() {
     print_section "Pre-installation Checks"
 
-    # Check if running with sudo/root
-    if [[ $EUID -ne 0 ]]; then
+    # Check if running with sudo/root (skip in dry-run mode)
+    if [[ $EUID -ne 0 && "$DRY_RUN" != "true" ]]; then
         error "This script must be run with sudo privileges"
         echo "Usage: sudo $0"
         exit 1
     fi
 
-    success "Running with administrative privileges"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "Running in dry-run mode (sudo check skipped)"
+    else
+        success "Running with administrative privileges"
+    fi
 
     # Check internet connectivity
-    if ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
+    if (is_dry_run || is_mocked "network") && [[ "${MOCK_INTERNET_CONNECTIVITY:-true}" == "true" ]]; then
+        success "Internet connectivity verified (mocked)"
+    elif ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
         success "Internet connectivity verified"
     else
-        error "No internet connectivity. Cannot download packages"
-        exit 1
+        if [[ "$DRY_RUN" == "true" ]]; then
+            success "Internet connectivity skipped in dry-run mode"
+        else
+            error "No internet connectivity. Cannot download packages"
+            exit 1
+        fi
     fi
 
     # Create backup directory
-    mkdir -p "$BACKUP_DIR"
+    execute_command "mkdir -p \"$BACKUP_DIR\""
     success "Backup directory created: $BACKUP_DIR"
 
     # Create log file
-    touch "$LOG_FILE"
-    chmod 644 "$LOG_FILE"
+    execute_command "touch \"$LOG_FILE\""
+    execute_command "chmod 644 \"$LOG_FILE\""
     success "Log file initialized: $LOG_FILE"
 }
 
@@ -153,7 +172,7 @@ update_system() {
     print_section "System Update"
 
     info "Updating package repositories..."
-    if apt update 2>&1 | tee -a "$LOG_FILE"; then
+    if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt update) || apt update 2>&1 | tee -a "$LOG_FILE"; then
         success "Package repositories updated"
     else
         error "Failed to update package repositories"
@@ -161,15 +180,15 @@ update_system() {
     fi
 
     info "Upgrading existing packages..."
-    if apt upgrade -y 2>&1 | tee -a "$LOG_FILE"; then
+    if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt upgrade -y) || apt upgrade -y 2>&1 | tee -a "$LOG_FILE"; then
         success "System packages upgraded"
     else
         warning "Some packages failed to upgrade"
     fi
 
     # Clean up
-    apt autoremove -y >/dev/null 2>&1
-    apt autoclean >/dev/null 2>&1
+    (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt autoremove -y) || apt autoremove -y >/dev/null 2>&1
+    (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt autoclean) || apt autoclean >/dev/null 2>&1
     success "Package cache cleaned"
 }
 
@@ -184,7 +203,7 @@ install_package_category() {
     for package in "${packages[@]}"; do
         info "Installing $package..."
 
-        if apt install -y "$package" 2>&1 | tee -a "$LOG_FILE"; then
+        if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt install -y "$package") || apt install -y "$package" 2>&1 | tee -a "$LOG_FILE"; then
             success "$package installed successfully"
             ((PACKAGES_INSTALLED++))
         else
@@ -201,7 +220,7 @@ install_wireguard() {
     # Check if WireGuard is available in repos
     if apt-cache show wireguard >/dev/null 2>&1; then
         info "Installing WireGuard from official repositories..."
-        if apt install -y wireguard wireguard-tools 2>&1 | tee -a "$LOG_FILE"; then
+        if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt install -y wireguard wireguard-tools) || apt install -y wireguard wireguard-tools 2>&1 | tee -a "$LOG_FILE"; then
             success "WireGuard installed successfully"
             ((PACKAGES_INSTALLED++))
         else
@@ -214,9 +233,9 @@ install_wireguard() {
         info "Attempting to install from backports..."
 
         echo "deb http://deb.debian.org/debian $(lsb_release -sc)-backports main" > /etc/apt/sources.list.d/backports.list
-        apt update
+        (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt update) || apt update
 
-        if apt install -y -t "$(lsb_release -sc)"-backports wireguard 2>&1 | tee -a "$LOG_FILE"; then
+        if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt install -y -t "$(lsb_release -sc)"-backports wireguard) || apt install -y -t "$(lsb_release -sc)"-backports wireguard 2>&1 | tee -a "$LOG_FILE"; then
             success "WireGuard installed from backports"
             ((PACKAGES_INSTALLED++))
         else
@@ -251,7 +270,7 @@ install_realvnc() {
         fi
     else
         info "Installing alternative VNC server..."
-        if apt install -y tightvncserver 2>&1 | tee -a "$LOG_FILE"; then
+        if (command -v mock_apt >/dev/null 2>&1 && (is_dry_run || is_mocked "system") && mock_apt install -y tightvncserver) || apt install -y tightvncserver 2>&1 | tee -a "$LOG_FILE"; then
             success "TightVNC server installed as alternative"
             ((PACKAGES_INSTALLED++))
         else
@@ -368,7 +387,7 @@ backup_original_configs() {
         if [[ -f "$config_file" ]]; then
             local backup_file
             backup_file="$BACKUP_DIR/$(basename "$config_file").$(date +%Y%m%d_%H%M%S)"
-            if cp "$config_file" "$backup_file" 2>&1 | tee -a "$LOG_FILE"; then
+            if execute_command "cp '$config_file' '$backup_file'" 2>&1 | tee -a "$LOG_FILE"; then
                 success "Backed up $config_file to $backup_file"
             else
                 warning "Failed to backup $config_file"
@@ -379,6 +398,12 @@ backup_original_configs() {
 
 verify_installation() {
     print_section "Installation Verification"
+
+    # Skip verification in dry-run mode
+    if [[ "$DRY_RUN" == "true" ]]; then
+        success "Installation verification skipped in dry-run mode"
+        return 0
+    fi
 
     local critical_commands=("ssh" "ufw" "wg" "fail2ban-client")
     local all_good=true
@@ -448,6 +473,15 @@ cleanup() {
 
 # Main execution
 main() {
+    # Initialize dry-run environment if available
+    if command -v init_dry_run_environment >/dev/null 2>&1; then
+        init_dry_run_environment
+    fi
+
+    # Setup mock system environment for dry-run mode
+    if command -v setup_mock_system >/dev/null 2>&1; then
+        setup_mock_system
+    fi
     # Initialize log
     true > "$LOG_FILE"
 

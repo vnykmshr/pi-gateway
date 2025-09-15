@@ -105,18 +105,36 @@ test-dry-run: ## Run all scripts in dry-run mode with Pi hardware simulation
 	@echo "$(BLUE)Running Pi Gateway scripts in dry-run mode...$(RESET)"
 	@echo "$(YELLOW)→ Testing check-requirements.sh$(RESET)"
 	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true ./scripts/check-requirements.sh > /dev/null 2>&1 && echo "  $(GREEN)✓$(RESET) check-requirements.sh dry-run passed" || echo "  $(RED)✗$(RESET) check-requirements.sh dry-run failed"
+	@echo "$(YELLOW)→ Testing install-dependencies.sh$(RESET)"
+	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true MOCK_SYSTEM=true ./scripts/install-dependencies.sh > /dev/null 2>&1 && echo "  $(GREEN)✓$(RESET) install-dependencies.sh dry-run passed" || echo "  $(RED)✗$(RESET) install-dependencies.sh dry-run failed"
+	@echo "$(YELLOW)→ Testing system-hardening.sh$(RESET)"
+	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true MOCK_SYSTEM=true ./scripts/system-hardening.sh > /dev/null 2>&1 && echo "  $(GREEN)✓$(RESET) system-hardening.sh dry-run passed" || echo "  $(RED)✗$(RESET) system-hardening.sh dry-run failed"
 	@echo "$(GREEN)Dry-run testing complete$(RESET)"
 
-test-dry-run-verbose: ## Run dry-run tests with verbose output  
+test-dry-run-verbose: ## Run dry-run tests with verbose output
 	@echo "$(BLUE)Running verbose dry-run tests...$(RESET)"
 	@echo "$(YELLOW)→ check-requirements.sh:$(RESET)"
 	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true VERBOSE_DRY_RUN=true ./scripts/check-requirements.sh
+	@echo "$(YELLOW)→ install-dependencies.sh:$(RESET)"
+	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true MOCK_SYSTEM=true VERBOSE_DRY_RUN=true ./scripts/install-dependencies.sh
+	@echo "$(YELLOW)→ system-hardening.sh:$(RESET)"
+	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true MOCK_SYSTEM=true VERBOSE_DRY_RUN=true ./scripts/system-hardening.sh
 
 mock-pi-hardware: ## Test with complete Pi hardware simulation
 	@echo "$(BLUE)Simulating Raspberry Pi 4 hardware environment...$(RESET)"
 	@MOCK_HARDWARE=true MOCK_PI_MODEL="Raspberry Pi 4 Model B Rev 1.4" MOCK_PI_MEMORY_MB=4096 MOCK_PI_STORAGE_GB=64 MOCK_PI_CPU_CORES=4 DRY_RUN=true ./scripts/check-requirements.sh
 
 test-quick: test-dry-run ## Quick development testing (alias for test-dry-run)
+
+test-unit: ## Run BATS unit tests
+	@echo "$(BLUE)Running BATS unit tests...$(RESET)"
+	@if [ -d "tests/bats-core" ]; then \
+		./tests/bats-core/bin/bats tests/unit/*.bats; \
+	else \
+		echo "$(RED)BATS-core not found. Run 'git submodule update --init' first$(RESET)"; \
+	fi
+
+test-all: test-dry-run test-unit ## Run all tests (dry-run + unit tests)
 
 format: ## Format shell scripts and fix common issues
 	@echo "$(BLUE)Formatting shell scripts...$(RESET)"
