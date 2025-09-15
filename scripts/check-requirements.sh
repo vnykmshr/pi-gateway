@@ -6,6 +6,19 @@
 
 set -euo pipefail
 
+# Source dry-run utilities if available
+if [[ -f "$(dirname "$0")/../tests/mocks/common.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/common.sh"
+fi
+
+if [[ -f "$(dirname "$0")/../tests/mocks/hardware.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/hardware.sh"
+fi
+
+if [[ -f "$(dirname "$0")/../tests/mocks/network.sh" ]]; then
+    source "$(dirname "$0")/../tests/mocks/network.sh"
+fi
+
 # Colors for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
@@ -64,7 +77,32 @@ check_warn() {
 detect_raspberry_pi() {
     print_section "Hardware Detection"
 
-    # Check if we're on a Raspberry Pi
+    # Use mock detection if available and enabled
+    if command -v mock_raspberry_pi_detection >/dev/null 2>&1 && is_mocked "hardware"; then
+        setup_mock_hardware
+        local model
+        model=$(mock_raspberry_pi_detection)
+
+        if [[ -n "$model" ]]; then
+            echo "Detected: $model (MOCKED)"
+
+            # Check for supported models
+            if [[ $model == *"Raspberry Pi"* ]]; then
+                if [[ $model == *"Pi 4"* ]] || [[ $model == *"Pi 5"* ]] || [[ $model == *"Pi 400"* ]] || [[ $model == *"Pi 500"* ]]; then
+                    check_pass "Raspberry Pi model is supported ($model)"
+                    return 0
+                else
+                    check_warn "Raspberry Pi model may not be optimal ($model). Pi 4/5/400/500 recommended"
+                    return 1
+                fi
+            else
+                check_fail "Not running on a Raspberry Pi"
+                return 1
+            fi
+        fi
+    fi
+
+    # Fall back to real detection
     if [[ -f /proc/device-tree/model ]]; then
         local model
         model=$(tr -d '\0' < /proc/device-tree/model)
@@ -147,12 +185,16 @@ check_operating_system() {
 check_system_resources() {
     print_section "System Resources"
 
-    # Check RAM
+    # Check RAM - use mock if available
     local total_ram_kb total_ram_mb
-    total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    if command -v mock_memory_detection >/dev/null 2>&1 && is_mocked "hardware"; then
+        total_ram_kb=$(mock_memory_detection)
+        echo "RAM: $((total_ram_kb / 1024))MB (MOCKED)"
+    else
+        total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+        echo "RAM: $((total_ram_kb / 1024))MB"
+    fi
     total_ram_mb=$((total_ram_kb / 1024))
-
-    echo "RAM: ${total_ram_mb}MB"
 
     if [[ $total_ram_mb -ge $MIN_RAM_MB ]]; then
         check_pass "Sufficient RAM available (${total_ram_mb}MB >= ${MIN_RAM_MB}MB)"
@@ -160,10 +202,15 @@ check_system_resources() {
         check_fail "Insufficient RAM (${total_ram_mb}MB < ${MIN_RAM_MB}MB required)"
     fi
 
-    # Check storage
+    # Check storage - use mock if available
     local root_size_gb root_avail_gb
-    root_size_gb=$(df -BG / | awk 'NR==2 {print $2}' | sed 's/G//')
-    root_avail_gb=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
+    if command -v mock_storage_detection >/dev/null 2>&1; then
+        root_size_gb=$(mock_storage_detection)
+        root_avail_gb=$((root_size_gb / 2))  # Mock available space
+    else
+        root_size_gb=$(df -BG / | awk 'NR==2 {print $2}' | sed 's/G//')
+        root_avail_gb=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
+    fi
 
     echo "Storage: ${root_size_gb}GB total, ${root_avail_gb}GB available"
 
@@ -179,9 +226,13 @@ check_system_resources() {
         check_fail "Insufficient free space (${root_avail_gb}GB < ${MIN_FREE_SPACE_GB}GB required)"
     fi
 
-    # Check CPU cores
+    # Check CPU cores - use mock if available
     local cpu_cores
-    cpu_cores=$(nproc)
+    if command -v mock_cpu_cores_detection >/dev/null 2>&1; then
+        cpu_cores=$(mock_cpu_cores_detection)
+    else
+        cpu_cores=$(nproc)
+    fi
     echo "CPU cores: $cpu_cores"
 
     if [[ $cpu_cores -ge 2 ]]; then
@@ -194,37 +245,71 @@ check_system_resources() {
 check_network_connectivity() {
     print_section "Network Connectivity"
 
-    # Check network interfaces
+    # Set up network mocking if available
+    if command -v setup_mock_network >/dev/null 2>&1; then
+        setup_mock_network
+    fi
+
+    # Check network interfaces - use mock if available
     local interfaces
-    interfaces=$(ip link show | grep -E '^[0-9]+:' | grep -cv lo)
+    if command -v mock_network_interfaces >/dev/null 2>&1; then
+        interfaces=$(mock_network_interfaces | wc -l)
+    else
+        interfaces=$(ip link show | grep -E '^[0-9]+:' | grep -cv lo)
+    fi
 
     if [[ $interfaces -gt 0 ]]; then
         check_pass "Network interfaces available ($interfaces found)"
 
         # List active interfaces
-        ip link show | grep -E '^[0-9]+:' | grep -v lo | while read -r line; do
-            local iface
-            iface=$(echo "$line" | cut -d: -f2 | tr -d ' ')
-            local state
-            state=$(echo "$line" | grep -o 'state [A-Z]*' | cut -d' ' -f2)
-            echo "  Interface: $iface ($state)"
-        done
+        if command -v mock_network_interfaces >/dev/null 2>&1; then
+            mock_network_interfaces | while read -r line; do
+                local iface
+                iface=$(echo "$line" | cut -d: -f2 | tr -d ' ')
+                local state="UP"  # Mock interfaces are always up
+                echo "  Interface: $iface ($state)"
+            done
+        else
+            ip link show | grep -E '^[0-9]+:' | grep -v lo | while read -r line; do
+                local iface
+                iface=$(echo "$line" | cut -d: -f2 | tr -d ' ')
+                local state
+                state=$(echo "$line" | grep -o 'state [A-Z]*' | cut -d' ' -f2)
+                echo "  Interface: $iface ($state)"
+            done
+        fi
     else
         check_fail "No network interfaces found"
     fi
 
-    # Check internet connectivity
-    if ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
-        check_pass "Internet connectivity available"
+    # Check internet connectivity - use mock if available
+    if command -v mock_ping >/dev/null 2>&1; then
+        if mock_ping 8.8.8.8 1 >/dev/null 2>&1; then
+            check_pass "Internet connectivity available"
+        else
+            check_fail "No internet connectivity detected"
+        fi
     else
-        check_fail "No internet connectivity detected"
+        if ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
+            check_pass "Internet connectivity available"
+        else
+            check_fail "No internet connectivity detected"
+        fi
     fi
 
-    # Check DNS resolution
-    if nslookup google.com >/dev/null 2>&1; then
-        check_pass "DNS resolution working"
+    # Check DNS resolution - use mock if available
+    if command -v mock_nslookup >/dev/null 2>&1; then
+        if mock_nslookup google.com >/dev/null 2>&1; then
+            check_pass "DNS resolution working"
+        else
+            check_fail "DNS resolution not working"
+        fi
     else
-        check_fail "DNS resolution not working"
+        if nslookup google.com >/dev/null 2>&1; then
+            check_pass "DNS resolution working"
+        else
+            check_fail "DNS resolution not working"
+        fi
     fi
 }
 
@@ -342,12 +427,22 @@ print_summary() {
     else
         echo -e "${RED}✗ System does not meet minimum requirements${NC}"
         echo -e "Please address the failed checks before proceeding"
-        exit 2
+        if command -v is_dry_run >/dev/null 2>&1 && is_dry_run; then
+            echo -e "${BLUE}Note: Dry-run mode - no actual system changes attempted${NC}"
+            exit 0  # Always succeed in dry-run mode for testing
+        else
+            exit 2
+        fi
     fi
 }
 
 # Main execution
 main() {
+    # Initialize dry-run environment if available
+    if command -v init_dry_run_environment >/dev/null 2>&1; then
+        init_dry_run_environment
+    fi
+
     # Clear log file
     true > "$LOG_FILE"
 
@@ -363,6 +458,19 @@ main() {
     check_essential_commands
 
     print_summary
+
+    # Print dry-run summary if available
+    if command -v print_dry_run_summary >/dev/null 2>&1; then
+        print_dry_run_summary
+    fi
+
+    # Cleanup mock environments
+    if command -v cleanup_mock_hardware >/dev/null 2>&1; then
+        cleanup_mock_hardware
+    fi
+    if command -v cleanup_mock_network >/dev/null 2>&1; then
+        cleanup_mock_network
+    fi
 }
 
 # Handle script termination

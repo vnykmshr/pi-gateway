@@ -100,3 +100,49 @@ install-deps: ## Install development dependencies (shellcheck, etc.)
 
 dev-setup: install-deps structure ## Set up development environment
 	@echo "$(GREEN)Development environment ready$(RESET)"
+
+test-dry-run: ## Run all scripts in dry-run mode with Pi hardware simulation
+	@echo "$(BLUE)Running Pi Gateway scripts in dry-run mode...$(RESET)"
+	@echo "$(YELLOW)→ Testing check-requirements.sh$(RESET)"
+	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true ./scripts/check-requirements.sh > /dev/null 2>&1 && echo "  $(GREEN)✓$(RESET) check-requirements.sh dry-run passed" || echo "  $(RED)✗$(RESET) check-requirements.sh dry-run failed"
+	@echo "$(GREEN)Dry-run testing complete$(RESET)"
+
+test-dry-run-verbose: ## Run dry-run tests with verbose output  
+	@echo "$(BLUE)Running verbose dry-run tests...$(RESET)"
+	@echo "$(YELLOW)→ check-requirements.sh:$(RESET)"
+	@DRY_RUN=true MOCK_HARDWARE=true MOCK_NETWORK=true VERBOSE_DRY_RUN=true ./scripts/check-requirements.sh
+
+mock-pi-hardware: ## Test with complete Pi hardware simulation
+	@echo "$(BLUE)Simulating Raspberry Pi 4 hardware environment...$(RESET)"
+	@MOCK_HARDWARE=true MOCK_PI_MODEL="Raspberry Pi 4 Model B Rev 1.4" MOCK_PI_MEMORY_MB=4096 MOCK_PI_STORAGE_GB=64 MOCK_PI_CPU_CORES=4 DRY_RUN=true ./scripts/check-requirements.sh
+
+test-quick: test-dry-run ## Quick development testing (alias for test-dry-run)
+
+format: ## Format shell scripts and fix common issues
+	@echo "$(BLUE)Formatting shell scripts...$(RESET)"
+	@echo "$(YELLOW)→ Checking script permissions$(RESET)"
+	@find scripts/ -name "*.sh" -exec chmod +x {} \;
+	@find tests/mocks/ -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+	@echo "$(YELLOW)→ Removing trailing whitespace$(RESET)"
+	@find scripts/ tests/mocks/ -name "*.sh" -exec sed -i.bak 's/[[:space:]]*$$//' {} \; -exec rm {}.bak \;
+	@echo "$(YELLOW)→ Ensuring files end with newline$(RESET)"
+	@find scripts/ tests/mocks/ -name "*.sh" -exec sh -c 'tail -c1 "$$0" | read -r _ || echo >> "$$0"' {} \;
+	@echo "$(GREEN)Code formatting complete$(RESET)"
+
+format-check: ## Check if code needs formatting
+	@echo "$(BLUE)Checking code formatting...$(RESET)"
+	@scripts_need_formatting=0; \
+	for file in $$(find scripts/ tests/mocks/ -name "*.sh" 2>/dev/null); do \
+		if [ -f "$$file" ]; then \
+			if grep -q '[[:space:]]$$' "$$file" || ! tail -c1 "$$file" | read -r _; then \
+				echo "  $(YELLOW)⚠$(RESET) $$file needs formatting"; \
+				scripts_need_formatting=1; \
+			fi; \
+		fi; \
+	done; \
+	if [ $$scripts_need_formatting -eq 0 ]; then \
+		echo "$(GREEN)✓ All scripts are properly formatted$(RESET)"; \
+	else \
+		echo "$(YELLOW)Run 'make format' to fix formatting issues$(RESET)"; \
+		exit 1; \
+	fi
