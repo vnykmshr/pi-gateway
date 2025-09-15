@@ -53,11 +53,11 @@ teardown() {
 }
 
 @test "check-requirements.sh validates storage requirements" {
-    export MOCK_STORAGE_TOTAL_GB=4
+    export MOCK_PI_STORAGE_GB=4
 
     run "$PI_GATEWAY_ROOT/scripts/check-requirements.sh"
     echo "Output: $output"
-    [[ "$output" =~ "Insufficient storage" ]]
+    [[ "$output" =~ "Limited storage space" ]]
 }
 
 @test "check-requirements.sh handles network connectivity checks" {

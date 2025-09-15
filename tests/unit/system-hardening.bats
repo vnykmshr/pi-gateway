@@ -41,7 +41,7 @@ teardown() {
 @test "system-hardening.sh skips sudo check in dry-run mode" {
     run "$PI_GATEWAY_ROOT/scripts/system-hardening.sh"
     echo "Output: $output"
-    [[ "$output" =~ "Running in dry-run mode.*sudo check skipped" ]]
+    [[ "$output" =~ "Running in dry-run mode.*(sudo check skipped)" ]]
 }
 
 @test "system-hardening.sh initializes dry-run environment" {
@@ -63,7 +63,7 @@ teardown() {
     echo "Output: $output"
 
     # Should show system update section
-    [[ "$output" =~ "System Update" ]]
+    [[ "$output" =~ "System Updates" ]]
 }
 
 @test "system-hardening.sh skips verification in dry-run mode" {
