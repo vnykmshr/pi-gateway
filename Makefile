@@ -146,13 +146,31 @@ setup-qemu: ## Set up QEMU Pi environment for integration testing
 	@echo "$(BLUE)Setting up QEMU Pi environment...$(RESET)"
 	@./tests/qemu/setup-pi-vm.sh
 
-test-docker: ## Run integration tests in Docker ARM64 environment
-	@echo "$(BLUE)Running integration tests in Docker ARM64 environment...$(RESET)"
+test-docker: ## Run integration tests in Docker environment (simple mode)
+	@echo "$(BLUE)Running integration tests in Docker environment...$(RESET)"
 	@./tests/docker/docker-test.sh run
+
+test-docker-systemd: ## Run integration tests in Docker with full systemd support
+	@echo "$(BLUE)Running integration tests in Docker systemd environment...$(RESET)"
+	@USE_SIMPLE_MODE=false ./tests/docker/docker-test.sh run
+
+docker-build: ## Build Docker test image
+	@echo "$(BLUE)Building Docker test image...$(RESET)"
+	@./tests/docker/docker-test.sh build
+
+docker-shell: ## Open shell in Docker test container
+	@echo "$(BLUE)Starting interactive shell in Docker container...$(RESET)"
+	@./tests/docker/docker-test.sh shell
+
+docker-cleanup: ## Clean up Docker test containers and images
+	@echo "$(BLUE)Cleaning up Docker test environment...$(RESET)"
+	@./tests/docker/docker-test.sh cleanup
 
 test-all: test-dry-run test-unit ## Run all tests (dry-run + unit)
 
 test-all-integration: test-dry-run test-unit test-docker ## Run all tests including Docker integration
+
+test-all-complete: test-dry-run test-unit test-docker test-docker-systemd ## Run complete test suite (all modes)
 
 format: ## Format shell scripts and fix common issues
 	@echo "$(BLUE)Formatting shell scripts...$(RESET)"

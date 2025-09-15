@@ -1,5 +1,5 @@
-# Pi Gateway Docker Test Environment
-# ARM64 container for cross-platform Pi Gateway testing
+# Pi Gateway Docker Test Environment (Simple Version)
+# ARM64 container for cross-platform Pi Gateway testing without systemd
 
 FROM debian:bookworm-slim
 
@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y \
     wget \
     git \
     sudo \
-    systemd \
     openssh-server \
-    init \
-    dbus \
+    procps \
+    net-tools \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create pi user with sudo access
@@ -27,11 +27,6 @@ RUN mkdir -p /var/run/sshd && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
     sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config
 
-# Set up systemd and SSH service (for service management testing)
-RUN systemctl enable ssh.service || true
-RUN mkdir -p /etc/systemd/system/multi-user.target.wants && \
-    ln -sf /lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service || true
-
 # Create Pi Gateway test directory
 WORKDIR /home/pi/pi-gateway
 
@@ -40,15 +35,22 @@ COPY . /home/pi/pi-gateway/
 RUN chown -R pi:pi /home/pi/pi-gateway && \
     chmod +x /home/pi/pi-gateway/scripts/*.sh
 
+# Create mock systemctl for service testing
+RUN echo '#!/bin/bash' > /usr/local/bin/systemctl && \
+    echo 'case "$1" in' >> /usr/local/bin/systemctl && \
+    echo '  "start"|"stop"|"enable"|"disable") echo "Mock: systemctl $*"; exit 0 ;;' >> /usr/local/bin/systemctl && \
+    echo '  "is-active"|"is-enabled") echo "active"; exit 0 ;;' >> /usr/local/bin/systemctl && \
+    echo '  "status") echo "● $2 - Mock Service"; echo "   Active: active (running)"; exit 0 ;;' >> /usr/local/bin/systemctl && \
+    echo '  *) /bin/systemctl "$@" ;;' >> /usr/local/bin/systemctl && \
+    echo 'esac' >> /usr/local/bin/systemctl && \
+    chmod +x /usr/local/bin/systemctl
+
 # Expose SSH port
 EXPOSE 22
-
-# Keep as root for systemd - pi user will be used via docker exec
-# USER pi
 
 # Set up environment
 ENV HOME=/home/pi
 ENV USER=pi
 
-# Default command
-CMD ["/bin/bash"]
+# Start SSH daemon and keep container running
+CMD ["/usr/sbin/sshd", "-D"]

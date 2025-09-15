@@ -18,6 +18,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PI_GATEWAY_ROOT="$SCRIPT_DIR/../.."
 readonly CONTAINER_NAME="pi-gateway-test"
 readonly IMAGE_NAME="pi-gateway:test"
+readonly USE_SIMPLE_MODE="${USE_SIMPLE_MODE:-true}"  # Use simple mode by default
 
 # Logging functions
 success() {
@@ -60,22 +61,37 @@ check_docker() {
 }
 
 build_test_image() {
-    info "Building Pi Gateway test image..."
+    if [[ "$USE_SIMPLE_MODE" == "true" ]]; then
+        info "Building Pi Gateway test image (simple mode)..."
+        local dockerfile="tests/docker/Dockerfile.simple"
+    else
+        info "Building Pi Gateway test image (systemd mode)..."
+        local dockerfile="tests/docker/Dockerfile"
+    fi
 
     cd "$PI_GATEWAY_ROOT"
 
-    # Build ARM64 image (may require Docker Desktop or buildx)
+    # Try to build ARM64 image first, then fall back to native
+    local build_success=false
+
+    # Try ARM64 build with buildx if available
     if docker buildx version >/dev/null 2>&1; then
-        docker buildx build \
+        info "Attempting ARM64 build with buildx..."
+        if docker buildx build \
             --platform linux/arm64 \
             -t "$IMAGE_NAME" \
-            -f tests/docker/Dockerfile \
-            . || {
+            -f "$dockerfile" \
+            . 2>/dev/null; then
+            build_success=true
+        else
             warning "ARM64 build failed, trying native build..."
-            docker build -t "$IMAGE_NAME" -f tests/docker/Dockerfile .
-        }
-    else
-        docker build -t "$IMAGE_NAME" -f tests/docker/Dockerfile .
+        fi
+    fi
+
+    # Fall back to native build if ARM64 failed
+    if [[ "$build_success" == "false" ]]; then
+        info "Building with native platform..."
+        docker build -t "$IMAGE_NAME" -f "$dockerfile" .
     fi
 
     success "Test image built successfully"
@@ -88,22 +104,60 @@ start_test_container() {
     docker stop "$CONTAINER_NAME" 2>/dev/null || true
     docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
-    # Start new container with systemd support
-    docker run -d \
-        --name "$CONTAINER_NAME" \
-        --privileged \
-        --tmpfs /run \
-        --tmpfs /run/lock \
-        -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
-        -p 2222:22 \
-        "$IMAGE_NAME" \
-        /lib/systemd/systemd
+    if [[ "$USE_SIMPLE_MODE" == "true" ]]; then
+        # Simple mode - just SSH daemon
+        docker run -d \
+            --name "$CONTAINER_NAME" \
+            -p 2222:22 \
+            "$IMAGE_NAME"
 
-    # Wait for container to be ready
-    sleep 5
+        # Wait for SSH to be ready
+        info "Waiting for SSH service to start..."
+        sleep 5
 
-    # Start SSH service
-    docker exec "$CONTAINER_NAME" systemctl start ssh
+        # Test SSH connectivity
+        if docker exec "$CONTAINER_NAME" pgrep sshd >/dev/null 2>&1; then
+            success "SSH service is running"
+        else
+            info "Starting SSH service manually..."
+            docker exec "$CONTAINER_NAME" /usr/sbin/sshd -D &
+            sleep 2
+        fi
+    else
+        # Systemd mode - full systemd support
+        docker run -d \
+            --name "$CONTAINER_NAME" \
+            --privileged \
+            --tmpfs /run \
+            --tmpfs /run/lock \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+            -p 2222:22 \
+            "$IMAGE_NAME" \
+            /lib/systemd/systemd
+
+        # Wait for container to be ready and systemd to initialize
+        info "Waiting for systemd to initialize..."
+        sleep 10
+
+        # Wait for systemd to be ready
+        local max_wait=30
+        local count=0
+        while ! docker exec "$CONTAINER_NAME" systemctl is-system-running --wait >/dev/null 2>&1; do
+            if [[ $count -ge $max_wait ]]; then
+                warning "Systemd initialization timeout, proceeding anyway..."
+                break
+            fi
+            sleep 2
+            ((count += 2))
+        done
+
+        # Start SSH service
+        info "Starting SSH service..."
+        docker exec "$CONTAINER_NAME" systemctl start ssh.service || {
+            warning "SSH service start failed, trying manual start..."
+            docker exec "$CONTAINER_NAME" /usr/sbin/sshd -D &
+        }
+    fi
 
     success "Test container started: $CONTAINER_NAME"
 }
@@ -114,6 +168,10 @@ run_script_in_container() {
 
     info "Running $script_name in container..."
 
+    # Ensure script is executable
+    docker exec "$CONTAINER_NAME" chmod +x "/home/pi/pi-gateway/$script_path"
+
+    # Run script as pi user with sudo
     docker exec -u pi "$CONTAINER_NAME" bash -c "cd /home/pi/pi-gateway && sudo ./$script_path"
 }
 
@@ -262,6 +320,14 @@ case "${1:-run}" in
         echo "  cleanup - Stop and remove test containers"
         echo "  logs    - Show container logs"
         echo "  shell   - Open shell in running container"
+        echo
+        echo "Environment Variables:"
+        echo "  USE_SIMPLE_MODE=true  - Use simplified container without systemd (default)"
+        echo "  USE_SIMPLE_MODE=false - Use full systemd container"
+        echo
+        echo "Examples:"
+        echo "  $0 run                    # Run tests in simple mode"
+        echo "  USE_SIMPLE_MODE=false $0 run  # Run tests in systemd mode"
         exit 1
         ;;
 esac
