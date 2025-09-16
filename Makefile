@@ -88,6 +88,20 @@ structure: ## Create recommended directory structure
 	@mkdir -p $(SCRIPTS_DIR) $(CONFIG_DIR)/{wireguard,ssh,vnc,ddns} $(DOCS_DIR) assets extensions tests backups
 	@echo "$(GREEN)Directory structure created$(RESET)"
 
+cli: ## Launch interactive Pi Gateway CLI
+	@./scripts/pi-gateway-cli.sh
+
+vpn-add: ## Add VPN client (usage: make vpn-add CLIENT=name)
+	@if [ -z "$(CLIENT)" ]; then echo "$(RED)Usage: make vpn-add CLIENT=client-name$(RESET)"; exit 1; fi
+	@sudo ./scripts/vpn-client-manager.sh add $(CLIENT)
+
+vpn-remove: ## Remove VPN client (usage: make vpn-remove CLIENT=name)
+	@if [ -z "$(CLIENT)" ]; then echo "$(RED)Usage: make vpn-remove CLIENT=client-name$(RESET)"; exit 1; fi
+	@sudo ./scripts/vpn-client-manager.sh remove $(CLIENT)
+
+vpn-list: ## List VPN clients
+	@./scripts/vpn-client-manager.sh list
+
 install-deps: ## Install development dependencies (shellcheck, etc.)
 	@echo "$(BLUE)Installing development dependencies...$(RESET)"
 	@if command -v apt-get >/dev/null 2>&1; then \
