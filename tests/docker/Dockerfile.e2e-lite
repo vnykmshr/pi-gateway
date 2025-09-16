@@ -1,0 +1,62 @@
+# Pi Gateway E2E Testing Environment (Lightweight)
+# Minimal Raspberry Pi OS simulation for quick testing
+
+FROM debian:bookworm-slim
+
+# Set up environment variables to simulate Raspberry Pi
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MOCK_PI_MODEL="Raspberry Pi 4 Model B Rev 1.4"
+ENV MOCK_PI_MEMORY_MB=4096
+ENV MOCK_PI_STORAGE_GB=32
+
+# Install essential dependencies only
+RUN apt-get update && apt-get install -y \
+    # Core system tools
+    systemd systemd-sysv dbus \
+    # Network and security basics
+    openssh-server ufw iptables \
+    # Essential utilities
+    curl wget git sudo \
+    # Pi Gateway core requirements
+    python3 lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create realistic Pi user environment
+RUN useradd -m -s /bin/bash pi && \
+    echo "pi:raspberry" | chpasswd && \
+    usermod -aG sudo pi && \
+    echo "pi ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Configure realistic OS release info for Pi simulation
+RUN echo 'PRETTY_NAME="Raspbian GNU/Linux 12 (bookworm)"' > /etc/os-release && \
+    echo 'NAME="Raspbian GNU/Linux"' >> /etc/os-release && \
+    echo 'VERSION_ID="12"' >> /etc/os-release && \
+    echo 'ID=raspbian' >> /etc/os-release && \
+    echo 'ID_LIKE=debian' >> /etc/os-release
+
+# Set up basic SSH
+RUN mkdir -p /var/run/sshd && \
+    ssh-keygen -A && \
+    systemctl enable ssh.service || true
+
+# Copy Pi Gateway source code
+WORKDIR /home/pi/pi-gateway
+COPY . /home/pi/pi-gateway/
+RUN chown -R pi:pi /home/pi/pi-gateway && \
+    find /home/pi/pi-gateway -name "*.sh" -exec chmod +x {} \;
+
+# Create mock hardware files
+RUN mkdir -p /proc && \
+    echo "Hardware\t: BCM2835" > /proc/cpuinfo && \
+    echo "Revision\t: c03114" >> /proc/cpuinfo && \
+    echo "Model\t\t: Raspberry Pi 4 Model B Rev 1.4" >> /proc/cpuinfo
+
+# Expose SSH port
+EXPOSE 22
+
+# Health check
+HEALTHCHECK --interval=5s --timeout=3s --start-period=10s \
+    CMD systemctl is-active --quiet ssh || exit 1
+
+# Use systemd as init
+ENTRYPOINT ["/sbin/init"]

@@ -1,0 +1,120 @@
+# Pi Gateway End-to-End Testing Environment
+# Simulates Raspberry Pi OS environment for comprehensive Pi Gateway testing
+
+FROM debian:bookworm-slim
+
+# Set up environment variables to simulate Raspberry Pi
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MOCK_PI_MODEL="Raspberry Pi 4 Model B Rev 1.4"
+ENV MOCK_PI_MEMORY_MB=4096
+ENV MOCK_PI_STORAGE_GB=32
+ENV MOCK_PI_CPU_CORES=4
+
+# Install comprehensive system dependencies for realistic Pi simulation
+RUN apt-get update && apt-get install -y \
+    # Core system tools
+    systemd systemd-sysv init dbus \
+    # Network and security tools
+    openssh-server openssh-client \
+    ufw fail2ban iptables \
+    # Development and utilities
+    curl wget git sudo nano vim \
+    # System monitoring and hardware simulation
+    procps net-tools iproute2 iputils-ping \
+    # Package management
+    apt-transport-https ca-certificates gnupg lsb-release \
+    # Python for potential extensions
+    python3 python3-pip \
+    # Additional Pi Gateway dependencies
+    software-properties-common unzip tree \
+    # Networking tools for VPN testing
+    wireguard-tools qrencode \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create realistic Pi user environment
+RUN useradd -m -s /bin/bash pi && \
+    echo "pi:raspberry" | chpasswd && \
+    usermod -aG sudo pi && \
+    echo "pi ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Create realistic system structure
+RUN mkdir -p /boot /opt/vc/bin /sys/firmware/devicetree/base && \
+    echo "Raspberry Pi 4 Model B Rev 1.4" > /sys/firmware/devicetree/base/model && \
+    echo "broadcom,bcm2711" > /sys/firmware/devicetree/base/compatible
+
+# Set up mock hardware detection files
+RUN echo "Hardware\t: BCM2835" > /proc/cpuinfo.pi && \
+    echo "Revision\t: c03114" >> /proc/cpuinfo.pi && \
+    echo "Serial\t\t: 00000000abcdefgh" >> /proc/cpuinfo.pi && \
+    echo "Model\t\t: Raspberry Pi 4 Model B Rev 1.4" >> /proc/cpuinfo.pi
+
+# Configure realistic OS release info
+RUN echo 'PRETTY_NAME="Raspbian GNU/Linux 12 (bookworm)"' > /etc/os-release && \
+    echo 'NAME="Raspbian GNU/Linux"' >> /etc/os-release && \
+    echo 'VERSION_ID="12"' >> /etc/os-release && \
+    echo 'VERSION="12 (bookworm)"' >> /etc/os-release && \
+    echo 'VERSION_CODENAME=bookworm' >> /etc/os-release && \
+    echo 'ID=raspbian' >> /etc/os-release && \
+    echo 'ID_LIKE=debian' >> /etc/os-release && \
+    echo 'HOME_URL="http://www.raspberrypi.org/"' >> /etc/os-release && \
+    echo 'SUPPORT_URL="http://www.raspberrypi.org/forums/"' >> /etc/os-release && \
+    echo 'BUG_REPORT_URL="http://www.raspberrypi.org/forums/"' >> /etc/os-release
+
+# Configure SSH for testing
+RUN mkdir -p /var/run/sshd && \
+    mkdir -p /etc/ssh && \
+    ssh-keygen -A && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+
+# Set up systemd for realistic service management
+RUN systemctl enable ssh.service || true && \
+    systemctl enable systemd-resolved || true && \
+    systemctl enable systemd-networkd || true
+
+# Create pi user directories and permissions
+RUN mkdir -p /home/pi/.ssh && \
+    chown pi:pi /home/pi/.ssh && \
+    chmod 700 /home/pi/.ssh
+
+# Set up mock network interfaces
+RUN mkdir -p /sys/class/net/eth0 && \
+    echo "up" > /sys/class/net/eth0/operstate && \
+    mkdir -p /sys/class/net/wlan0 && \
+    echo "down" > /sys/class/net/wlan0/operstate
+
+# Create realistic directory structure
+RUN mkdir -p /var/log /var/lib /var/backups /etc/systemd/system && \
+    chown pi:pi /var/log /var/lib /var/backups
+
+# Copy Pi Gateway source code
+WORKDIR /home/pi/pi-gateway
+COPY . /home/pi/pi-gateway/
+
+# Set up proper ownership and permissions
+RUN chown -R pi:pi /home/pi/pi-gateway && \
+    find /home/pi/pi-gateway -name "*.sh" -exec chmod +x {} \;
+
+# Create mock vcgencmd for hardware queries
+RUN echo '#!/bin/bash' > /opt/vc/bin/vcgencmd && \
+    echo 'case "$1" in' >> /opt/vc/bin/vcgencmd && \
+    echo '  "get_mem"*) echo "arm=3072M gpu=1024M" ;;' >> /opt/vc/bin/vcgencmd && \
+    echo '  "measure_temp") echo "temp=42.8'\''C" ;;' >> /opt/vc/bin/vcgencmd && \
+    echo '  "get_throttled") echo "throttled=0x0" ;;' >> /opt/vc/bin/vcgencmd && \
+    echo '  *) echo "Unknown command: $1" >&2; exit 1 ;;' >> /opt/vc/bin/vcgencmd && \
+    echo 'esac' >> /opt/vc/bin/vcgencmd && \
+    chmod +x /opt/vc/bin/vcgencmd
+
+# Add to PATH
+ENV PATH="/opt/vc/bin:${PATH}"
+
+# Expose common Pi Gateway ports
+EXPOSE 22 2222 51820/udp 5901
+
+# Set up systemd as init system for realistic testing
+ENTRYPOINT ["/sbin/init"]
+
+# Health check to ensure container is ready for testing
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD systemctl is-active --quiet ssh || exit 1
