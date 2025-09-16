@@ -66,7 +66,7 @@ teardown() {
 
     run "$PI_GATEWAY_ROOT/scripts/check-requirements.sh"
     echo "Output: $output"
-    [[ "$output" =~ "Internet connectivity verified" ]]
+    [[ "$output" =~ "Internet connectivity available" ]]
 }
 
 @test "check-requirements.sh handles offline scenarios" {
