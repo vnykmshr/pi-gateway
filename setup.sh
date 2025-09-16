@@ -52,6 +52,7 @@ readonly BLUE='\033[0;34m'
 readonly PURPLE='\033[0;35m'
 readonly CYAN='\033[0;36m'
 readonly WHITE='\033[1;37m'
+readonly GRAY='\033[0;37m'
 readonly NC='\033[0m' # No Color
 
 # Configuration
@@ -146,6 +147,67 @@ debug() {
 progress() {
     echo -e "  ${CYAN}⚡${NC} $1"
     log "PROGRESS" "$1"
+}
+
+# Enhanced progress tracking with visual indicators
+show_progress_bar() {
+    local current=$1
+    local total=$2
+    local width=40
+    local percentage=$((current * 100 / total))
+    local completed=$((current * width / total))
+    local remaining=$((width - completed))
+
+    # Build progress bar
+    local bar=""
+    for ((i=0; i<completed; i++)); do bar+="█"; done
+    for ((i=0; i<remaining; i++)); do bar+="░"; done
+
+    echo -e "  ${CYAN}Progress: [${GREEN}$bar${CYAN}] ${WHITE}$percentage%${CYAN} ($current/$total)${NC}"
+}
+
+show_phase_progress() {
+    local current_phase=$1
+    local total_phases=$2
+    local phase_name="$3"
+    local phase_description="$4"
+
+    echo
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    show_progress_bar "$current_phase" "$total_phases"
+    echo -e "  ${WHITE}Current Phase:${NC} ${CYAN}$phase_name${NC}"
+    echo -e "  ${WHITE}Description:${NC} $phase_description"
+
+    # Estimate time remaining
+    if [[ -n "$SETUP_START_TIME" && $current_phase -gt 1 ]]; then
+        local elapsed=$(($(date +%s) - SETUP_START_TIME))
+        local avg_time_per_phase=$((elapsed / (current_phase - 1)))
+        local remaining_phases=$((total_phases - current_phase + 1))
+        local estimated_remaining=$((avg_time_per_phase * remaining_phases))
+
+        if [[ $estimated_remaining -gt 60 ]]; then
+            local minutes=$((estimated_remaining / 60))
+            echo -e "  ${WHITE}Estimated remaining:${NC} ${YELLOW}~${minutes} minutes${NC}"
+        else
+            echo -e "  ${WHITE}Estimated remaining:${NC} ${YELLOW}~${estimated_remaining} seconds${NC}"
+        fi
+    fi
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo
+}
+
+# Sub-phase progress for individual scripts
+show_subphase_progress() {
+    local message="$1"
+    local step="${2:-}"
+    local total_steps="${3:-}"
+
+    if [[ -n "$step" && -n "$total_steps" ]]; then
+        local sub_percentage=$((step * 100 / total_steps))
+        echo -e "  ${CYAN}📋${NC} $message ${GRAY}[$step/$total_steps - $sub_percentage%]${NC}"
+    else
+        echo -e "  ${CYAN}📋${NC} $message"
+    fi
 }
 
 # Display functions
@@ -463,13 +525,19 @@ run_setup_phases() {
     local completed_phases=0
     local failed_phases=0
 
+    # Set setup start time for time estimation
+    SETUP_START_TIME=$(date +%s)
+
     progress "Starting Pi Gateway setup with $total_phases phases"
+    echo -e "  ${WHITE}Total phases to complete:${NC} ${CYAN}$total_phases${NC}"
+    echo
 
     for phase in "${SELECTED_PHASES[@]}"; do
         ((completed_phases++))
 
-        echo
-        echo -e "${CYAN}Progress: $completed_phases/$total_phases${NC}"
+        # Show enhanced progress for current phase
+        local phase_description="${PHASE_DESCRIPTIONS[$phase]}"
+        show_phase_progress "$completed_phases" "$total_phases" "$phase" "$phase_description"
 
         if execute_phase "$phase"; then
             success "Phase completed successfully: $phase"
@@ -621,6 +689,42 @@ parse_arguments() {
     done
 }
 
+# Pre-flight system validation
+run_preflight_checks() {
+    echo
+    progress "Running pre-flight system validation..."
+
+    # Source the pre-flight check script
+    local preflight_script="$SCRIPT_DIR/scripts/pre-flight-check.sh"
+
+    if [[ -f "$preflight_script" ]]; then
+        # Run the pre-flight checks
+        if bash "$preflight_script"; then
+            success "Pre-flight checks completed successfully"
+            echo
+        else
+            error "Pre-flight checks failed - system not ready for setup"
+            echo
+            echo -e "${YELLOW}Please resolve the issues above before running Pi Gateway setup.${NC}"
+            echo -e "${WHITE}You can run the checks again with:${NC} ./scripts/pre-flight-check.sh"
+            echo
+            exit 1
+        fi
+    else
+        warning "Pre-flight check script not found, proceeding with setup"
+        echo -e "${WHITE}Manual verification recommended:${NC}"
+        echo -e "  • Internet connectivity available"
+        echo -e "  • Sufficient disk space (8GB+)"
+        echo -e "  • Sudo privileges configured"
+        echo
+        read -p "Continue anyway? (y/N): " -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            info "Setup cancelled by user"
+            exit 0
+        fi
+    fi
+}
+
 # Main execution
 main() {
     # Set up signal handlers
@@ -635,6 +739,9 @@ main() {
 
     # Load configuration
     load_config_file
+
+    # Run pre-flight checks
+    run_preflight_checks
 
     if [[ "$INTERACTIVE_MODE" == "true" ]]; then
         # Interactive setup flow
