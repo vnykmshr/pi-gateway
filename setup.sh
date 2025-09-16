@@ -41,25 +41,14 @@ if [[ ${BASH_VERSION%%.*} -lt 4 ]]; then
     exit 1
 fi
 
-# Set strict error handling (but allow undefined variables for array access)
+# Set strict error handling
 set -eo pipefail
 
-# Colors for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly PURPLE='\033[0;35m'
-readonly CYAN='\033[0;36m'
-readonly WHITE='\033[1;37m'
-readonly GRAY='\033[0;37m'
-readonly NC='\033[0m' # No Color
+# Source common utilities
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/common.sh"
 
 # Configuration
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly SCRIPT_NAME="$(basename "$0")"
-readonly TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
-readonly LOG_FILE="/tmp/pi-gateway-setup.log"
+readonly SCRIPT_DIR="$PI_GATEWAY_ROOT"
 readonly CONFIG_FILE="$SCRIPT_DIR/config/setup.conf"
 readonly SETUP_STATE_FILE="/tmp/pi-gateway-setup-state.json"
 
@@ -109,44 +98,11 @@ declare -A PHASE_STATUS=()
 SETUP_START_TIME=""
 SETUP_ERROR_COUNT=0
 
-# Logging functions
-log() {
-    local level="$1"
-    shift
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') - $level: $*" | tee -a "$LOG_FILE"
-}
-
-success() {
-    echo -e "  ${GREEN}✓${NC} $1"
-    log "SUCCESS" "$1"
-}
-
+# Override error function to track setup errors
 error() {
-    echo -e "  ${RED}✗${NC} $1"
+    echo -e "  ${RED}✗${NC} $1" >&2
     log "ERROR" "$1"
     ((SETUP_ERROR_COUNT++))
-}
-
-warning() {
-    echo -e "  ${YELLOW}⚠${NC} $1"
-    log "WARN" "$1"
-}
-
-info() {
-    echo -e "  ${BLUE}ℹ${NC} $1"
-    log "INFO" "$1"
-}
-
-debug() {
-    if [[ "$VERBOSE_MODE" == "true" ]]; then
-        echo -e "  ${PURPLE}🔍${NC} $1"
-        log "DEBUG" "$1"
-    fi
-}
-
-progress() {
-    echo -e "  ${CYAN}⚡${NC} $1"
-    log "PROGRESS" "$1"
 }
 
 # Enhanced progress tracking with visual indicators

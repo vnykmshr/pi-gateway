@@ -3,7 +3,7 @@
 [![CI Status](https://github.com/vnykmshr/pi-gateway/workflows/Pi%20Gateway%20CI/badge.svg)](https://github.com/vnykmshr/pi-gateway/actions)
 [![Release](https://img.shields.io/github/v/release/vnykmshr/pi-gateway)](https://github.com/vnykmshr/pi-gateway/releases)
 [![License](https://img.shields.io/github/license/vnykmshr/pi-gateway)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-40%20tests%20|%2092.5%25%20pass-green)](https://github.com/vnykmshr/pi-gateway/actions)
+[![Tests](https://img.shields.io/badge/tests-40%20tests%20|%20100%25%20pass-green)](https://github.com/vnykmshr/pi-gateway/actions)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/vnykmshr/pi-gateway/releases)
 [![Production Ready](https://img.shields.io/badge/production-ready-brightgreen)](docs/deployment-guide.md)
 
