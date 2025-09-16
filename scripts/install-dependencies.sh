@@ -6,21 +6,8 @@
 
 set -euo pipefail
 
-# Source dry-run utilities if available
-if [[ -f "$(dirname "$0")/../tests/mocks/common.sh" ]]; then
-    source "$(dirname "$0")/../tests/mocks/common.sh"
-fi
-
-if [[ -f "$(dirname "$0")/../tests/mocks/system.sh" ]]; then
-    source "$(dirname "$0")/../tests/mocks/system.sh"
-fi
-
-# Colors for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m' # No Color
+# Source common utilities
+source "$(dirname "$0")/common.sh"
 
 # Script configuration
 readonly LOG_FILE="/tmp/pi-gateway-install-deps.log"

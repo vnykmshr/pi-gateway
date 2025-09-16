@@ -141,8 +141,8 @@ teardown() {
     [[ "$output" =~ "execute_command" ]]
 }
 
-@test "system-hardening.sh sources required mock files" {
-    run grep "source.*mocks" "$PI_GATEWAY_ROOT/scripts/system-hardening.sh"
+@test "system-hardening.sh sources common utilities" {
+    run grep "source.*common.sh" "$PI_GATEWAY_ROOT/scripts/system-hardening.sh"
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "tests/mocks" ]]
+    [[ "$output" =~ "common.sh" ]]
 }
