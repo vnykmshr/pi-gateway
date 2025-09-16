@@ -76,6 +76,7 @@ check_operating_system() {
         return 1
     fi
 
+    # shellcheck source=/dev/null
     source /etc/os-release
 
     if [[ "$ID" == "raspbian" ]] || [[ "$ID_LIKE" == *"debian"* ]]; then
@@ -105,7 +106,8 @@ check_hardware_platform() {
 check_memory_requirements() {
     check_start "Memory requirements (minimum ${MIN_RAM_MB}MB)"
 
-    local total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    local total_mem_kb
+    total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
     local total_mem_mb=$((total_mem_kb / 1024))
 
     if [[ $total_mem_mb -ge $MIN_RAM_MB ]]; then
@@ -119,7 +121,8 @@ check_memory_requirements() {
 check_disk_space() {
     check_start "Disk space requirements (minimum ${MIN_DISK_GB}GB)"
 
-    local available_kb=$(df / | tail -1 | awk '{print $4}')
+    local available_kb
+    available_kb=$(df / | tail -1 | awk '{print $4}')
     local available_gb=$((available_kb / 1024 / 1024))
 
     if [[ $available_gb -ge $MIN_DISK_GB ]]; then
