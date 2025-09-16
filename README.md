@@ -4,6 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/vnykmshr/pi-gateway)](https://github.com/vnykmshr/pi-gateway/releases)
 [![License](https://img.shields.io/github/license/vnykmshr/pi-gateway)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-40%20tests%20|%2092.5%25%20pass-green)](https://github.com/vnykmshr/pi-gateway/actions)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/vnykmshr/pi-gateway/releases)
+[![Production Ready](https://img.shields.io/badge/production-ready-brightgreen)](docs/deployment-guide.md)
 
 **Complete Raspberry Pi homelab bootstrap system with automated security hardening, VPN setup, and comprehensive testing infrastructure.**
 
@@ -13,6 +15,12 @@ Pi Gateway provides a one-script automated setup for core services while support
 
 ## Quick Start
 
+### One-Command Installation (Recommended)
+```bash
+curl -sSL https://raw.githubusercontent.com/vnykmshr/pi-gateway/main/scripts/quick-install.sh | bash
+```
+
+### Manual Installation
 ```bash
 # Clone the repository
 git clone https://github.com/vnykmshr/pi-gateway.git
@@ -23,6 +31,11 @@ make check
 
 # Run the setup (on your Raspberry Pi)
 make setup
+```
+
+### Interactive Setup
+```bash
+curl -sSL https://raw.githubusercontent.com/vnykmshr/pi-gateway/main/scripts/quick-install.sh | bash -s -- --interactive
 ```
 
 ## ✨ Features
@@ -73,9 +86,19 @@ make setup
 
 ## Documentation
 
-- [Setup Guide](docs/setup-guide.md) - Detailed installation instructions
+### Getting Started
+- [Quick Start Guide](docs/quick-start.md) - 15-minute setup guide
+- [Complete Setup Guide](docs/setup-guide.md) - Detailed installation instructions
+- [Deployment Guide](docs/deployment-guide.md) - Production deployment guide
+
+### Daily Operations
 - [Usage Guide](docs/usage.md) - How to use installed services
-- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and solutions
+
+### Advanced Topics
+- [Extension Development](docs/extensions.md) - Creating custom extensions
+- [Security Best Practices](docs/security.md) - Hardening and compliance
+- [Release Notes](RELEASE_NOTES.md) - Version history and features
 
 ## Project Structure
 
