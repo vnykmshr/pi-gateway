@@ -11,7 +11,7 @@ fi
 readonly PI_GATEWAY_COMMON_LOADED=1
 
 # Script information
-readonly PI_GATEWAY_VERSION="1.0.0"
+readonly PI_GATEWAY_VERSION="1.1.0"
 readonly PI_GATEWAY_ROOT="${PI_GATEWAY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 # Colors
