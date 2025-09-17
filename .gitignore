@@ -68,3 +68,11 @@ config/wireguard/clients/
 downloads/
 temp/
 tmp/
+
+# QEMU test environment - exclude large binaries and runtime files
+tests/qemu/*/logs/
+tests/qemu/*/snapshots/
+tests/qemu/*/images/
+tests/qemu/*/*.img
+tests/qemu/*/*.img.xz
+tests/qemu/*/*.qcow2
