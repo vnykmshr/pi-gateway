@@ -224,7 +224,7 @@ generate_report() {
 
     if [ "$TESTS_FAILED" -eq 0 ]; then
         echo -e "🎉 ${GREEN}ALL TESTS PASSED!${NC}"
-        echo -e "   ${GREEN}Pi Gateway v1.0.0 is ready for production deployment${NC}"
+        echo -e "   ${GREEN}Pi Gateway v1.1.0 is ready for production deployment${NC}"
         echo
         echo -e "✅ ${GREEN}DEPLOYMENT APPROVED${NC}"
     else
@@ -248,7 +248,7 @@ generate_report() {
 # Main execution
 main() {
     echo -e "${BLUE}🚀 Pi Gateway Comprehensive End-to-End Test Suite${NC}"
-    echo -e "${BLUE}   Complete validation of Pi Gateway v1.0.0 functionality${NC}"
+    echo -e "${BLUE}   Complete validation of Pi Gateway v1.1.0 functionality${NC}"
 
     # Execute all test phases
     init_test
