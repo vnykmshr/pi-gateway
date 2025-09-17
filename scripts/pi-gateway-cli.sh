@@ -19,7 +19,7 @@ readonly NC='\033[0m' # No Color
 # Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-readonly VERSION="1.0.0"
+readonly VERSION="1.1.0"
 
 # Logging functions
 success() {
