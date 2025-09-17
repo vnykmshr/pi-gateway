@@ -1,0 +1,8 @@
+# QEMU Pi Gateway Test Environment - Ignore large files
+*.img
+*.img.xz
+kernel-qemu
+*.dtb
+pi-gateway-test/images/
+pi-gateway-test/logs/
+pi-gateway-test/snapshots/
