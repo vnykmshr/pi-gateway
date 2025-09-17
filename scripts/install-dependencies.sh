@@ -133,6 +133,8 @@ check_prerequisites() {
     # Check internet connectivity
     if (is_dry_run || is_mocked "network") && [[ "${MOCK_INTERNET_CONNECTIVITY:-true}" == "true" ]]; then
         success "Internet connectivity verified (mocked)"
+    elif [[ "${PI_GATEWAY_TESTING:-false}" == "true" ]] || [[ "${MOCK_MODE:-false}" == "true" ]]; then
+        success "Internet connectivity verified (testing mode)"
     elif ping -c 1 -W 5 8.8.8.8 >/dev/null 2>&1; then
         success "Internet connectivity verified"
     else

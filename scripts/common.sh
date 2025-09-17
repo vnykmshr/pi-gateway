@@ -93,6 +93,22 @@ debug() {
     fi
 }
 
+progress() {
+    echo -e "  ${CYAN}⚡${NC} $1"
+    log "PROGRESS" "$1"
+}
+
+# Testing and mocking utilities
+is_dry_run() {
+    [[ "${DRY_RUN:-false}" == "true" ]]
+}
+
+is_mocked() {
+    local component="${1:-}"
+    # Check global mock modes
+    [[ "${MOCK_MODE:-false}" == "true" ]] || [[ "${PI_GATEWAY_TESTING:-false}" == "true" ]]
+}
+
 # Dry-run execution wrapper
 execute_command() {
     local cmd="$*"

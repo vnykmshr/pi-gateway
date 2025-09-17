@@ -127,8 +127,19 @@ detect_raspberry_pi() {
         check_warn "Device tree model: $model"
         return 1
     else
-        check_fail "Cannot detect hardware model"
-        return 1
+        # In testing or non-Pi environments, allow bypass
+        if [[ "${PI_GATEWAY_TESTING:-false}" == "true" ]] || [[ "${MOCK_MODE:-false}" == "true" ]]; then
+            local mock_model="${MOCK_PI_MODEL:-Raspberry Pi 4 Model B Rev 1.4}"
+            echo "Detected: $mock_model (testing mode)"
+            check_pass "Raspberry Pi model detected ($mock_model)"
+            return 0
+        elif [[ "${BYPASS_HARDWARE_CHECK:-false}" == "true" ]]; then
+            check_warn "Hardware detection bypassed (not a Raspberry Pi)"
+            return 0
+        else
+            check_fail "Cannot detect hardware model. Use BYPASS_HARDWARE_CHECK=true to override"
+            return 1
+        fi
     fi
 }
 
