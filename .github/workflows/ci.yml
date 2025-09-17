@@ -41,6 +41,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck
 
+      - name: Ensure BATS is executable
+        run: chmod +x tests/bats-core/bin/bats
+
       - name: Run dry-run tests
         run: make test-dry-run
 
