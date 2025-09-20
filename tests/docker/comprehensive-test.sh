@@ -74,10 +74,12 @@ init_test() {
     section "Initializing Comprehensive Pi Gateway Test"
     cd "$PROJECT_ROOT"
 
-    echo "=== Pi Gateway Comprehensive Test Session Started: $(date) ===" > "$TEST_LOG"
-    echo "Test Environment: $(uname -a)" >> "$TEST_LOG"
-    echo "Working Directory: $(pwd)" >> "$TEST_LOG"
-    echo "================================" >> "$TEST_LOG"
+    {
+        echo "=== Pi Gateway Comprehensive Test Session Started: $(date) ==="
+        echo "Test Environment: $(uname -a)"
+        echo "Working Directory: $(pwd)"
+        echo "================================"
+    } > "$TEST_LOG"
 
     success "Test environment initialized"
 }

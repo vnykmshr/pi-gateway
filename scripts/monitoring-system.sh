@@ -552,7 +552,7 @@ cleanup_old_data() {
 
     # Clean old metrics
     if [[ -d "$METRICS_DIR" ]]; then
-        find "$METRICS_DIR" -name "*.json" -mtime +$retention_days -delete 2>/dev/null || true
+        find "$METRICS_DIR" -name "*.json" -mtime +"$retention_days" -delete 2>/dev/null || true
     fi
 
     # Clean old alerts (keep for longer - 90 days)

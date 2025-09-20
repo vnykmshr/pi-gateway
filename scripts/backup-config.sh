@@ -162,7 +162,7 @@ check_prerequisites() {
     local required_space=1048576  # 1GB in KB
 
     if [[ "$available_space" -lt "$required_space" ]]; then
-        warning "Low disk space available for backup ($(($available_space / 1024))MB available)"
+        warning "Low disk space available for backup ($((available_space / 1024))MB available)"
     fi
 
     # Create backup directory
@@ -390,7 +390,7 @@ list_available_backups() {
                 local backup_name
                 backup_name=$(basename "$backup_dir")
                 local backup_date
-                backup_date=$(echo "$backup_name" | sed 's/_/ /')
+                backup_date=${backup_name/_/ }
                 local backup_size
                 backup_size=$(du -sh "$backup_dir" | cut -f1)
                 local backup_age

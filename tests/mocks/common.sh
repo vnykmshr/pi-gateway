@@ -21,12 +21,14 @@ MOCK_COLOR='\033[0;35m'     # Magenta
 # Initialize dry-run logging
 init_dry_run_log() {
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo "=== Pi Gateway Dry-Run Session Started: $(date) ===" > "$DRY_RUN_LOG"
-        echo "DRY_RUN=$DRY_RUN" >> "$DRY_RUN_LOG"
-        echo "MOCK_HARDWARE=$MOCK_HARDWARE" >> "$DRY_RUN_LOG"
-        echo "MOCK_NETWORK=$MOCK_NETWORK" >> "$DRY_RUN_LOG"
-        echo "MOCK_SYSTEM=$MOCK_SYSTEM" >> "$DRY_RUN_LOG"
-        echo "================================" >> "$DRY_RUN_LOG"
+        {
+            echo "=== Pi Gateway Dry-Run Session Started: $(date) ==="
+            echo "DRY_RUN=$DRY_RUN"
+            echo "MOCK_HARDWARE=$MOCK_HARDWARE"
+            echo "MOCK_NETWORK=$MOCK_NETWORK"
+            echo "MOCK_SYSTEM=$MOCK_SYSTEM"
+            echo "================================"
+        } > "$DRY_RUN_LOG"
     fi
 }
 

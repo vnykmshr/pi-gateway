@@ -617,8 +617,8 @@ cleanup_old_backups() {
 
     local retention_days="${BACKUP_RETENTION_DAYS:-14}"
 
-    find "$BACKUP_DIR" -name "pi-gateway-*.tar.gz" -mtime +$retention_days -delete 2>/dev/null || true
-    find "$BACKUP_DIR" -name "pi-gateway-*.tar" -mtime +$retention_days -delete 2>/dev/null || true
+    find "$BACKUP_DIR" -name "pi-gateway-*.tar.gz" -mtime +"$retention_days" -delete 2>/dev/null || true
+    find "$BACKUP_DIR" -name "pi-gateway-*.tar" -mtime +"$retention_days" -delete 2>/dev/null || true
 
     local remaining_backups
     remaining_backups=$(find "$BACKUP_DIR" -name "pi-gateway-*.tar*" | wc -l)

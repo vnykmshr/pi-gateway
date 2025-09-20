@@ -1,0 +1,28 @@
+# ShellCheck configuration for Pi Gateway project
+# Disable overly strict rules while maintaining meaningful checks
+
+# Disable SC2155 - declaring and assigning separately is often unnecessary overhead
+disable=SC2155
+
+# Disable SC2034 for unused variables - many are configuration constants
+disable=SC2034
+
+# Disable SC1091 - not following sourced files is expected in modular scripts
+disable=SC1091
+
+# Disable SC1090 - dynamic sourcing is valid in this configuration-driven project
+disable=SC1090
+
+# Disable SC2126 - grep|wc -l vs grep -c is a minor style preference
+disable=SC2126
+
+# Disable SC2317 - unreachable code warnings in conditional mock loading
+disable=SC2317
+
+# Keep important security and correctness checks enabled:
+# SC2086 - Unquoted variables (security risk)
+# SC2046 - Quote to prevent splitting (security risk)
+# SC2068 - Double quote array expansions
+# SC2005 - Useless echo
+# SC2004 - $/${} unnecessary on arithmetic variables
+# SC2001 - See if you can use parameter expansion instead of sed
